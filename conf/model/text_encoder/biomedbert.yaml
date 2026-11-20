@@ -1,0 +1,4 @@
+defaults:
+  - base_text_encoder
+base_url: microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract
+embed_dim: 512

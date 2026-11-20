@@ -1,0 +1,13 @@
+defaults:
+  - base_model
+  - text_encoder: biomedbert
+  - query_encoder: default
+  - doc_encoder: default
+  - combiner: mlp_gauss
+  - _self_
+
+lr: 5e-3
+l2_lambda: 1e-3
+temperature: 1
+shared_dim: 128
+pico_dropout: 0.2

@@ -1,0 +1,15 @@
+experiment_name: test
+
+defaults:
+  - model: default
+  - data: default
+  - trainer: default
+  - logger: default
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .

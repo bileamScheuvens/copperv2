@@ -1,0 +1,44 @@
+import torch
+from omegaconf import DictConfig
+from src.models.copper import CoPPeR
+from src.submodules import SciRepEval, SciRepModel
+
+from src.constants import ROOT, CACHEPATH, EXPORTPATH
+
+
+class SciRepModelWrapped(SciRepModel):
+    def __init__(self, cfg):
+        super().__init__(base_checkpoint="allenai/specter")
+        self.model = CoPPeR.load_from_checkpoint(
+            cfg.model.ckpt_path, weights_only=False, strict=False
+        )
+        self.model.eval()
+
+    def __call__(self, batch, batch_ids=None):
+        batch = [batch] if type(batch) == str else batch
+        embeddings = []
+        for x in batch:
+            try:
+                title, abstract = x.split("[SEP]")
+            except Exception as e:
+                continue
+            embeddings.append(self.model.embed_paper(title, abstract))
+
+        return torch.cat(embeddings)
+
+
+def eval_transfer(cfg: DictConfig):
+    # specter = SciRepModel(base_checkpoint="allenai/specter")
+    copper = SciRepModelWrapped(cfg)
+
+    task_file = ROOT / "src" / "submodules" / "scirepeval" / "scirepeval_tasks.jsonl"
+    evaluator = SciRepEval(
+        tasks_config=str(task_file),
+        task_list=["DRSM", "Tweet Mentions", "RELISH"],
+        # embedding_save_path=CACHEPATH / "transfer_.pt",
+    )
+
+    evaluator.evaluate(
+        copper, str(EXPORTPATH / "transfer" / f"transfer_{cfg.index_name}.json")
+    )
+    # evaluator.evaluate(specter, str(EXPORTPATH / "transfer" / "transfer_specter.json"))

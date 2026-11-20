@@ -1,0 +1,6 @@
+defaults:
+  - base_query_encoder
+  - _self_
+
+hidden_dim: 256
+is_prob: true
