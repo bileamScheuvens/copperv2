@@ -1,4 +1,4 @@
 defaults:
   - base_logger
 project: pico_retrieval
-mode: offline
+mode: online
