@@ -61,19 +61,20 @@ class CoPPeR(L.LightningModule):
     def join_text(self, title, abstract):
         return f"{title}\n\n{abstract}"
 
-    @torch.no_grad
-    def embed_query(self, query):
-        pico_individual, labels = self.pico_extractor.encode_pico(pico)
-        pico_projected = self.pico_projector(pico_individual)
-        means = self.pico_combiner(pico_projected, labels)["mean"]
-
-        breakpoint()  # double check dims
-        return means.unsqueeze(0).cpu()
-
-    @torch.no_grad()
-    def embed_paper(self, title, abstract):
-        doc_embed = self.doc_encoder(self.join_text(title, abstract))
-        return doc_embed.cpu()  # TODO should this be cpu?
+    # TODO
+    # @torch.no_grad
+    # def embed_query(self, query):
+    #     pico_individual, labels = self.pico_extractor.encode_pico(pico)
+    #     pico_projected = self.pico_projector(pico_individual)
+    #     means = self.pico_combiner(pico_projected, labels)["mean"]
+    #
+    #     breakpoint()  # double check dims
+    #     return means.unsqueeze(0).cpu()
+    #
+    # @torch.no_grad()
+    # def embed_paper(self, title, abstract):
+    #     doc_embed = self.doc_encoder(self.join_text(title, abstract))
+    #     return doc_embed.cpu()  # TODO should this be cpu?
 
     def forward(self, docs, queries, query_classes):
         """Shapes: (B, shared_dim) | (B, max_elements, shared_dim) | (B, max_elements, 1)"""

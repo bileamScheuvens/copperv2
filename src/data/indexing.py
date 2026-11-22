@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from src.constants import INDEXPATH, SHARDPATH
 from src.data.load_data import ebm_iter, load_ebm, pubmed_iter
-from src.models import PicoExtractor
 from src.models.copper import CoPPeR
 
 
@@ -101,7 +100,7 @@ class PICOIndex:
 
     def __init__(
         self,
-        extractor: PicoExtractor | None = None,
+        extractor: None = None,
         model_name: str | None = None,
         corpus="both",
         n_candidates=50,

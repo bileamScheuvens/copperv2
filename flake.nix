@@ -36,25 +36,22 @@
         buildInputs = with pkgs; [
           (python.withPackages (
             ps: with ps; [
-              biopython
               datasets
               dash
               polars
-              openai
               hydra-core
               faiss
-              gradio
-              tabulate
+              # tabulate
               ipdb
               joblib
               kaleido
               lightning
               matplotlib
-              networkx
+              # networkx
               nltk
               omegaconf
-              onnxruntime
-              onnxscript
+              # onnxruntime
+              # onnxscript
               pandas
               pip
               pip-tools
@@ -62,9 +59,9 @@
               pudb
               pytest
               sentence-transformers
-              sentence-transformers.optional-dependencies.image
-              seqeval
-              torch-geometric
+              # sentence-transformers.optional-dependencies.image
+              # seqeval
+              # torch-geometric
               transformers
               torchvision
               umap-learn
