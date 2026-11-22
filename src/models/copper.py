@@ -20,11 +20,11 @@ class CoPPeR(L.LightningModule):
         self.strict_loading = False
 
         if load_encoder:
-            self.text_encoder = SentenceTransformerModel(cfg.text_encoder.base_url)
+            self.text_encoder = SentenceTransformerModel(cfg.text_encoder.model_id)
         else:
             self.text_encoder = lambda x: x
 
-        self.tokenizer = AutoTokenizer.from_pretrained(cfg.text_encoder.base_url)
+        self.tokenizer = AutoTokenizer.from_pretrained(cfg.text_encoder.model_id.value)
 
         # query encoder
         self.query_encoder = EncoderHead(
@@ -93,7 +93,7 @@ class CoPPeR(L.LightningModule):
         )  # TODO handle batching in compositor
 
         preds["query_means"] = queries_composed["mean"]
-        if self.query_encoder.is_prob:
+        if self.cfg.query_encoder.is_prob:
             preds["query_logvars"] = queries_composed["logvar"]
             preds["query_zs"] = queries_composed["log_z"]
         return preds
@@ -136,7 +136,7 @@ class CoPPeR(L.LightningModule):
         return metrics
 
     def training_step(self, batch, batch_idx):  # TODO manage batch routing
-        metrics = self._compute_loss(**self(batch))
+        metrics = self._compute_loss(**self(*batch))
         self.log_dict(metrics, batch_size=len(batch[0]))
         return metrics["train/loss"]
 

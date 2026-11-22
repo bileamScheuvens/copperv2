@@ -62,7 +62,7 @@ class PromptRepsModel(L.LightningModule):
 class SentenceTransformerModel(L.LightningModule):
     def __init__(self, model_id):
         super().__init__()
-        self.model = SentenceTransformer(model_id)
+        self.model = SentenceTransformer(model_id.value)
 
     @torch.no_grad
     def forward(self, text):

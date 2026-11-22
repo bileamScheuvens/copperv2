@@ -98,6 +98,7 @@ class LikelihoodRetrievalLoss(L.LightningModule):
     ):
         inv_sigmas = torch.exp(-query_logsigma)
 
+        # [B, 1]
         norm_constant = (-query.shape[-1] / 2) * self.log_2pi - 0.5 * (
             torch.sum(query_logsigma, dim=-1, keepdim=True)
         )

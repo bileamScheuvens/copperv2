@@ -5,7 +5,8 @@ from src.train import train_copper
 
 
 # allow interpolation at resolve time
-OmegaConf.register_new_resolver("eval", eval)
+# no idea where this came from, now errors
+# OmegaConf.register_new_resolver("eval", eval)
 
 
 @hydra.main(version_base=None, config_path=str(CONFIGPATH), config_name="config")

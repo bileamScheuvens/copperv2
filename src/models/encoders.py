@@ -40,5 +40,4 @@ class EncoderHead(L.LightningModule):
     def forward(self, x):
         """During training samples are pre encoded, only head applied.
         Cache misses / test time: also run encoder"""
-        breakpoint()  # check dims
         return self.head(self.frozen_encoder(x))

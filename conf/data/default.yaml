@@ -4,5 +4,6 @@ defaults:
   - _self_
 
 batch_size: 128
+text_embedder: BGE
 train_ratio: 0.9
 seed: 161

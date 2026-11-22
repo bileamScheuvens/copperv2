@@ -1,6 +1,6 @@
 defaults:
   - base_model
-  - text_encoder: biomedbert
+  - text_encoder: bge
   - query_encoder: default
   - doc_encoder: default
   - combiner: mlp_gauss

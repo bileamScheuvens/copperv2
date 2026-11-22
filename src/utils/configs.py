@@ -8,6 +8,20 @@ from omegaconf import OmegaConf
 cs = ConfigStore()
 
 
+class TextEmbedType(Enum):
+    PROMPTREPS = "promptreps"
+    SENTENCE = "sentence_transformer"
+
+
+class TextEmbedder(Enum):
+    PUBMEDBERT = "neuml/pubmedbert-base-embeddings"
+    QWEN2 = "Qwen/Qwen2.5-1.5B-Instruct"
+    QWEN3 = "Qwen/Qwen3.5-0.8B"
+    QWEN3E = "Qwen/Qwen3-Embedding-0.6B"
+    BGE = "BAAI/bge-large-zh-v1.5"
+    E5 = "intfloat/multilingual-e5-large"
+
+
 class SamplerType(Enum):
     RANDOM = "random_sampler"
     HARDNEGATIVE = "hard_negative_sampler"
@@ -37,6 +51,7 @@ cs.store(group="data/sampler", name="base_hardnegative", node=HardNegativeConfig
 class SciDocDataConfig:
     batch_size: int
     train_ratio: float
+    text_embedder: TextEmbedder
     seed: int
     sampler: SamplerConfig
 
@@ -68,20 +83,6 @@ class LoggerConfig:
 cs.store(group="logger", name="base_logger", node=LoggerConfig)
 
 
-class TextEmbedType(Enum):
-    PROMPTREPS = "promptreps"
-    SENTENCE = "sentence_transformer"
-
-
-class TextEmbedder(Enum):
-    PUBMEDBERT = "neuml/pubmedbert-base-embeddings"
-    QWEN2 = "Qwen/Qwen2.5-1.5B-Instruct"
-    QWEN3 = "Qwen/Qwen3.5-0.8B"
-    QWEN3E = "Qwen/Qwen3-Embedding-0.6B"
-    BGE = "BAAI/bge-large-zh-v1.5"
-    E5 = "intfloat/multilingual-e5-large"
-
-
 @dataclass
 class PubMedPicoConfig:
     base_url: str
@@ -107,7 +108,7 @@ class PaperEmbedderClass(Enum):
 
 @dataclass
 class TextEncoderConfig:
-    base_url: str
+    model_id: TextEmbedder
     embed_dim: int
 
 

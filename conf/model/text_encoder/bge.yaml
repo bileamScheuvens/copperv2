@@ -1,0 +1,5 @@
+defaults:
+  - base_text_encoder
+
+model_id: BGE
+embed_dim: 1024

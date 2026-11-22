@@ -30,7 +30,7 @@ def train_copper(cfg: ExperimentConfig):
         resume="allow",
     )
 
-    model = CoPPeR(cfg.model)
+    model = CoPPeR(cfg.model, load_encoder=False)
     datamodule = ExtractionsDatamodule(cfg.data, tokenizer=model.tokenizer)
     trainer = L.Trainer(
         **as_dict(cfg.trainer),

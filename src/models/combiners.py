@@ -1,3 +1,4 @@
+from src.constants import QUERY_CLASSES
 from typing import Callable, Optional
 
 import lightning as L
@@ -42,30 +43,52 @@ class Combiner(L.LightningModule):
         else:
             return self.forward_point(embeds, labels)
 
-    def forward_point(self, embeds, labels):
+    def forward_point(self, batched_embeds, batched_labels):
         # embeds shape: [n_elements, shared_dim]
-        inter_embeds = []
-        for label in set(labels):
-            current_embeds = [e for (e, e_l) in zip(embeds, labels) if e_l == label]
-            inter_embeds.append(self.inter_combiner(torch.stack(current_embeds)))
-        return {"mean": self.intra_combiner(torch.stack(inter_embeds))}  # [shared_dim]
+        batched_res = []
+        for embeds, labels in zip(batched_embeds, batched_labels):
+            inter_embeds = []
+            for label in QUERY_CLASSES.values():
+                current_embeds = [e for (e, e_l) in zip(embeds, labels) if e_l == label]
+                inter_embeds.append(self.inter_combiner(torch.stack(current_embeds)))
+            # [shared_dim]
+            batched_res.append(self.intra_combiner(torch.stack(inter_embeds)))
+        # [B, shared_dim]
+        return {"mean": torch.stack(batched_res)}
 
-    def forward_prob(self, embeds, labels):
+    def forward_prob(self, batched_embeds, batched_labels):
+        # TODO make this work with batches:
+        # embeds shape: [B, max_elements, 2, D]
+        # labels shape: [B, max_elements] (-1 if masked)
+        # for now:
         # embeds shape: [n_elements, 2, shared_dim]
-        intra_embeds = []
-        log_z = torch.zeros(1).to(self.device)
-
-        for label in set(labels):
-            current_embeds = [e for (e, e_l) in zip(embeds, labels) if e_l == label]
-            intra_embed = self.intra_combiner(current_embeds)
-            if any(torch.isnan(intra_embed["logvar"])):
-                breakpoint()
-            intra_embeds.append(
-                torch.stack((intra_embed["mean"], intra_embed["logvar"]))
-            )
-            log_z += intra_embed["log_z"]
-        # stack all
-        return self.inter_combiner(intra_embeds, log_z=log_z)
+        batched_means = []
+        batched_logvars = []
+        batched_logzs = []
+        for embeds, labels in zip(batched_embeds, batched_labels):
+            intra_embeds = []
+            log_z = torch.zeros(1).to(self.device)
+            for label in QUERY_CLASSES.values():
+                current_embeds = [e for (e, e_l) in zip(embeds, labels) if e_l == label]
+                if len(current_embeds) == 0:
+                    continue
+                intra_embed = self.intra_combiner(current_embeds)
+                intra_embeds.append(
+                    torch.stack((intra_embed["mean"], intra_embed["logvar"]))
+                )
+                log_z += intra_embed["log_z"]
+            # stack all
+            inter_embeds = self.inter_combiner(intra_embeds, log_z=log_z)
+            batched_means.append(inter_embeds["mean"])
+            batched_logvars.append(inter_embeds["logvar"])
+            batched_logzs.append(inter_embeds["log_z"])
+        # [B, 2, shared_dim]
+        # TODO decide if logz is needed downstream
+        return {
+            "mean": torch.stack(batched_means),
+            "logvar": torch.stack(batched_logvars),
+            "log_z": torch.stack(batched_logzs),
+        }
 
 
 class MLPCombiner(L.LightningModule):
