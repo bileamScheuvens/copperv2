@@ -1,4 +1,0 @@
-defaults:
-  - pubmed_pico
-
-use_prob_encoder: false

@@ -1,3 +1,4 @@
+from src.data.indexing import SimplePICOIndex
 import argparse
 import pickle
 
@@ -5,8 +6,8 @@ import faiss
 import torch
 from sentence_transformers import SentenceTransformer
 
-from src.constants import INDEXPATH
-from src.data.load_data import load_extractions
+from src.constants import INDEXPATH, QUERY_CLASSES
+from src.data.load_data import load_extractions, load_pico_store
 from src.utils.configs import TextEmbedder
 
 
@@ -48,11 +49,28 @@ def encode_pico(model_id: TextEmbedder, target, batch_size=32):
     exploded.to_frame().write_parquet(INDEXPATH / f"{target}_str.parquet")
 
 
+def populate_negatives(model_id: TextEmbedder):
+    pico_store = {}
+    pico_lookup = {}
+    for c in QUERY_CLASSES:
+        store, lookup = load_pico_store(c, model_id)
+        pico_store[c] = store
+        pico_lookup[c] = lookup
+    SimplePICOIndex(pico_store, pico_lookup, text_embedder=model_id)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--target",
-        choices=["abstracts", "population", "intervention", "comparator", "outcome"],
+        choices=[
+            "abstracts",
+            "population",
+            "intervention",
+            "comparator",
+            "outcome",
+            "negatives",
+        ],
         default="abstracts",
     )
     parser.add_argument(
@@ -64,5 +82,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.target == "abstracts":
         encode_abstracts(args.model)
+    elif args.target == "negatives":
+        populate_negatives(args.model)
     else:
         encode_pico(args.model, target=args.target)

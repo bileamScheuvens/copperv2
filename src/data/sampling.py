@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from random import seed, choice
-from typing import TYPE_CHECKING
+from random import randrange, seed
 
-from torch.utils.data import BatchSampler, Sampler, Subset, RandomSampler
+from datasets.arrow_dataset import Dataset
+from torch.utils.data import BatchSampler, RandomSampler, Sampler
 
-from src.data.indexing import PICOIndex
-
-if TYPE_CHECKING:
-    from src.data.scidocdata import SciDocDataset
+from src.data.indexing import CachedPICOIndex, SimplePICOIndex
 from src.utils.configs import HardNegativeConfig, SamplerType
 
 
-def SamplerFactory(cfg, dataset):
+def SamplerFactory(cfg, dataset, pico_store=None, pico_lookup=None):
     seed(cfg.seed)
 
     if cfg.sampler.sampler_type == SamplerType.RANDOM:
@@ -20,29 +17,40 @@ def SamplerFactory(cfg, dataset):
             RandomSampler(dataset), batch_size=cfg.batch_size, drop_last=False
         )
     if cfg.sampler.sampler_type == SamplerType.HARDNEGATIVE:
-        return HardNegativeSampler(cfg.sampler, cfg.batch_size, dataset)
+        return HardNegativeSampler(
+            cfg.sampler, pico_store, pico_lookup, cfg.batch_size, dataset
+        )
 
     raise NotImplementedError(f"No sampler of type {cfg.sampler.sampler_type}")
 
 
 class HardNegativeSampler(Sampler):
-    def __init__(self, cfg: HardNegativeConfig, batch_size: int, subset: Subset):
+    def __init__(
+        self,
+        cfg: HardNegativeConfig,
+        pico_store,
+        pico_lookup,
+        batch_size: int,
+        dataset: Dataset,
+    ):
         self.cfg = cfg
         self.n_anchors = cfg.n_anchors
         self.n_per_anchor = cfg.n_per_anchor
         self.batch_size = batch_size
-        self.index = PICOIndex(
-            model_name=cfg.extractor_model,
-            corpus=cfg.corpus,
+        self.index = SimplePICOIndex(
+            pico_store=pico_store,
+            pico_lookup=pico_lookup,
             n_candidates=cfg.n_candidates,
             n_subcandidates=cfg.n_subcandidates,
         )
-        self.subset = subset
-        self.subset_idx_map = {idx: i for i, idx in enumerate(subset.indices)}
-        self.dataset: SciDocDataset = subset.dataset  # ty:ignore[invalid-assignment]
+        self.dataset = dataset
+        self.pmid2idx = {pmid: i for i, pmid in enumerate(dataset["pmid"])}
 
     def __len__(self):
-        return len(self.subset) // self.batch_size
+        return len(self.dataset) // self.batch_size
+
+    def sample_idx(self):
+        return randrange(len(self.dataset))
 
     def __iter__(self):
         """
@@ -50,25 +58,23 @@ class HardNegativeSampler(Sampler):
         Returns list of indices
         """
         for _ in range(len(self)):
-            global_dataset_idx = set()
+            batch_indices = set()
             # gather anchor and hard negatives
             for _ in range(self.n_anchors):
                 # pick anchor from subset
-                anchor = choice(self.subset.indices)
-                anchor_pmid = self.dataset.pmids[anchor]
-                global_dataset_idx.add(anchor)
-                # global_dataset_idx.add(self.dataset.pmid2idx[anchor])
-                # get negative candidates
+                anchor_idx = self.sample_idx()
+                batch_indices.add(anchor_idx)
+                # get negative candidates, skipping those from val test
                 negatives = [
-                    self.dataset.pmid2idx[x]
-                    for x in self.index.get_similar_doc(anchor_pmid)
+                    self.pmid2idx[x]
+                    for x in self.index.get_similar_doc(
+                        self.dataset[anchor_idx]["pmid"]
+                    )
+                    if x in self.pmid2idx
                 ]
-                # filter out negatives not in this subset
-                # TODO find out if this is expensive
-                negatives = [x for x in negatives if x in self.subset_idx_map]
                 # add to batch
-                global_dataset_idx |= set(negatives[: self.n_per_anchor])
+                batch_indices |= set(negatives[: self.n_per_anchor])
             # fill batch with random negatives ensuring no duplicates
-            while len(global_dataset_idx) < self.batch_size:
-                global_dataset_idx.add(choice(self.subset.indices))
-            yield [self.subset_idx_map[x] for x in global_dataset_idx]
+            while len(batch_indices) < self.batch_size:
+                batch_indices.add(self.sample_idx())
+            yield batch_indices

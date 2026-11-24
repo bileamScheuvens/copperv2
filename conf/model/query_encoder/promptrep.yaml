@@ -1,5 +1,0 @@
-defaults:
-  - pubmed_pico
-
-text_embedder: QWEN3
-text_embed_type: PROMPTREPS

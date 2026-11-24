@@ -1,8 +1,0 @@
-defaults:
-  - base_paper_embedder
-
-model_class: SPECTER
-base_url: allenai/specter
-use_prob_encoder: false
-hidden_dim: 256
-shared_dim: 128

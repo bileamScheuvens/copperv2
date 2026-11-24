@@ -48,15 +48,16 @@ cs.store(group="data/sampler", name="base_hardnegative", node=HardNegativeConfig
 
 
 @dataclass
-class SciDocDataConfig:
+class PubMedDataConfig:
     batch_size: int
     train_ratio: float
     text_embedder: TextEmbedder
     seed: int
     sampler: SamplerConfig
+    num_workers: int = 0
 
 
-cs.store(group="data", name="base_data", node=SciDocDataConfig)
+cs.store(group="data", name="base_data", node=PubMedDataConfig)
 
 
 @dataclass
@@ -84,29 +85,6 @@ cs.store(group="logger", name="base_logger", node=LoggerConfig)
 
 
 @dataclass
-class PubMedPicoConfig:
-    base_url: str
-    hidden_dim: int
-    max_len: int
-    shared_dim: int
-    text_embed_type: TextEmbedType
-    text_embedder: TextEmbedder
-    use_prob_encoder: bool
-    considered_elements: list[str]
-    cache_extraction: bool = False
-    pico_dropout: float = 0.0
-
-
-cs.store(group="model/pico_extractor", name="base_pubmed_pico", node=PubMedPicoConfig)
-
-
-class PaperEmbedderClass(Enum):
-    SPECTER = "specter"
-    SPECTER2 = "specter2"
-    PLAIN = "plain"
-
-
-@dataclass
 class TextEncoderConfig:
     model_id: TextEmbedder
     embed_dim: int
@@ -123,25 +101,6 @@ class EncoderHeadConfig:
 
 cs.store(group="model/doc_encoder", name="base_doc_encoder", node=EncoderHeadConfig)
 cs.store(group="model/query_encoder", name="base_query_encoder", node=EncoderHeadConfig)
-
-
-@dataclass
-class PaperEmbedderConfig:
-    model_class: PaperEmbedderClass
-    base_url: str | None
-    text_embed_type: TextEmbedType | None
-    text_embedder: TextEmbedder | None
-    hidden_dim: int
-    shared_dim: int
-    use_prob_encoder: bool
-    adapter: str | None
-    max_len: int = 512
-    unfreeze_after: int = -1  # frozen by default
-
-
-cs.store(
-    group="model/paper_embedder", name="base_paper_embedder", node=PaperEmbedderConfig
-)
 
 
 class PicoAggType(Enum):
@@ -194,7 +153,7 @@ class EvalMethods(Enum):
 @dataclass
 class EvalConfig:
     model: CoPPeRConfig
-    data: SciDocDataConfig
+    data: PubMedDataConfig
     experiment: dict | None
     eval_method: EvalMethods
     index_name: str = "index"
@@ -210,7 +169,7 @@ cs.store(name="base_eval", node=EvalConfig)
 class ExperimentConfig:
     experiment_name: str
     model: CoPPeRConfig
-    data: SciDocDataConfig
+    data: PubMedDataConfig
     trainer: TrainerConfig
     logger: LoggerConfig
 

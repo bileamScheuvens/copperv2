@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 from src.constants import EVALPATH
-from src.data.scidocdata import SciDocDatamodule
+from src.data.pubmeddata import PubMedDatamodule
 from src.metrics.plots import plot_means_subsets
 from src.models.copper import CoPPeR
 
@@ -23,7 +23,7 @@ def eval_visualisation(cfg: DictConfig):
         cfg.model.ckpt_path, weights_only=False, strict=False
     )
     model.eval()
-    datamodule = SciDocDatamodule(cfg.data)
+    datamodule = PubMedDatamodule(cfg.data)
     datamodule.setup("fit")
     val_data = datamodule.val_data
     N = 128

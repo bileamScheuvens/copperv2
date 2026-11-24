@@ -2,9 +2,7 @@ defaults:
   - base_hardnegative
 
 sampler_type: HARDNEGATIVE
-extractor_model: PUBMEDBERT
-corpus: both
-n_candidates: 50
-n_subcandidates: 50
+n_candidates: 15
+n_subcandidates: 15
 n_anchors: 8
 n_per_anchor: 8
