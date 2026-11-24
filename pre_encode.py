@@ -36,9 +36,10 @@ def encode_pico(model_id: TextEmbedder, target, batch_size=32):
     df = load_extractions()
     model = SentenceTransformer(model_id.value)
     exploded = df[target].explode(empty_as_null=False).unique()
+    texts = (f"{target}: " + exploded).to_list()
     # TODO prefix category to element
     embeds = model.encode(
-        exploded.to_list(),
+        texts,
         batch_size=batch_size,
         normalize_embeddings=True,
         show_progress_bar=True,
