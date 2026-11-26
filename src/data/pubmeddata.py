@@ -1,6 +1,6 @@
 import lightning as L
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, Value
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 
@@ -23,11 +23,15 @@ class PubMedDatamodule(L.LightningDataModule):
 
     def setup(self, stage: str):
         # drop title and abstract to reduce data movement
-        dataset = load_dataset(
-            "parquet",
-            data_files=str(DATAPATH / "index-pubmed" / "extractions.parquet"),
-            split="train",
-        ).remove_columns(["title", "abstract"])
+        dataset = (
+            load_dataset(
+                "parquet",
+                data_files=str(DATAPATH / "index-pubmed" / "extractions.parquet"),
+                split="train",
+            )
+            .remove_columns(["title", "abstract"])
+            .cast_column("pmid", Value("int64"))
+        )
         split = dataset.train_test_split(
             train_size=self.cfg.train_ratio, seed=self.cfg.seed
         )

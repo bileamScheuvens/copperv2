@@ -5,7 +5,7 @@ from random import randrange, seed
 from datasets.arrow_dataset import Dataset
 from torch.utils.data import BatchSampler, RandomSampler, Sampler
 
-from src.data.indexing import CachedPICOIndex, SimplePICOIndex
+from src.data.indexing import SimplePICOIndex
 from src.utils.configs import HardNegativeConfig, SamplerType
 
 

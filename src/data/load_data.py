@@ -10,8 +10,11 @@ def load_negatives():
     return df
 
 
-def load_extractions():
+def load_extractions(sorted=False):
     df = pl.read_parquet(DATAPATH / "index-pubmed" / "extractions.parquet")
+    df = df.with_columns(pl.col("pmid").cast(pl.Int64))
+    if sorted:
+        return df.sort("pmid")
     return df
 
 

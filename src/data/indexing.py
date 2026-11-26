@@ -1,7 +1,7 @@
 from src.utils.configs import TextEmbedder
 import math
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from time import perf_counter
 from collections import defaultdict
@@ -142,42 +142,42 @@ class PICOIndex:
         return list(dict(sorted_candidates[: self.n_candidates]).keys())
 
 
-class CachedPICOIndex(PICOIndex):
-    def __init__(
-        self,
-        pico_store,
-        pico_lookup,
-        n_candidates=25,
-        n_subcandidates=25,
-    ):
-        self.pico_store = pico_store
-        self.pico_lookup = pico_lookup
-        self.n_candidates = n_candidates
-        self.n_subcandidates = n_subcandidates
-        self.index_path = INDEXPATH / "hard_negatives.json"
-        self.cache_all()
-
-    def cache_all(self):
-        if self.index_path.exists():
-            self.cached_candidates = load_negatives()
-            return
-
-        super().__init__(
-            self.pico_store, self.pico_lookup, self.n_candidates, self.n_subcandidates
-        )
-
-        negative_rows = []
-        for pmid in tqdm(self.raw_data["pmid"], desc="Caching hard negatives..."):
-            negative_rows.append(super().get_similar_doc(pmid))
-
-        self.cached_candidates = self.raw_data.select("pmid").with_columns(
-            pl.Series("negatives", negative_rows)
-        )
-        self.cached_candidates.write_parquet(self.index_path)
-
-    def get_similar_doc(self, anchor_pmid):
-        breakpoint()
-        pass
+# class CachedPICOIndex(PICOIndex):
+#     def __init__(
+#         self,
+#         pico_store,
+#         pico_lookup,
+#         n_candidates=25,
+#         n_subcandidates=25,
+#     ):
+#         self.pico_store = pico_store
+#         self.pico_lookup = pico_lookup
+#         self.n_candidates = n_candidates
+#         self.n_subcandidates = n_subcandidates
+#         self.index_path = INDEXPATH / "hard_negatives.json"
+#         self.cache_all()
+#
+#     def cache_all(self):
+#         if self.index_path.exists():
+#             self.cached_candidates = load_negatives()
+#             return
+#
+#         super().__init__(
+#             self.pico_store, self.pico_lookup, self.n_candidates, self.n_subcandidates
+#         )
+#
+#         negative_rows = []
+#         for pmid in tqdm(self.raw_data["pmid"], desc="Caching hard negatives..."):
+#             negative_rows.append(super().get_similar_doc(pmid))
+#
+#         self.cached_candidates = self.raw_data.select("pmid").with_columns(
+#             pl.Series("negatives", negative_rows)
+#         )
+#         self.cached_candidates.write_parquet(self.index_path)
+#
+#     def get_similar_doc(self, anchor_pmid):
+#         breakpoint()
+#         pass
 
 
 class SimplePICOIndex(PICOIndex):
@@ -195,8 +195,12 @@ class SimplePICOIndex(PICOIndex):
         self.n_subcandidates = n_subcandidates
         self.text_embedder = text_embedder
 
-        self.extractions = load_extractions()
-        self.negatives = []
+        self.extractions = load_extractions(sorted=True)
+        # map element to pmids it occurs in
+        self.el2pmid = {}
+        for pico_cat in QUERY_CLASSES:
+            self.el2pmid[pico_cat] = self.populate_el2pmid(pico_cat)
+        self.negatives = {}
         # populates self.negatives as follows:
         # self.negatives[P]['adults'] -> [<idx of adolescents embedding in pico_store[P]>, ...]
         if not self.try_load():
@@ -208,6 +212,13 @@ class SimplePICOIndex(PICOIndex):
             / "negatives"
             / f"{pico_cat}_negatives_{self.text_embedder.name}.parquet"
         )
+
+    def populate_el2pmid(self, pico_cat):
+        # explode
+        df = self.extractions.select("pmid", pico_cat).explode(pico_cat)
+        # group
+        df = df.group_by(pico_cat).agg(pl.col("pmid"))
+        return {el: pmid for (el, pmid) in df.iter_rows()}
 
     def cache_single(self, pico_cat, batch_size=4096):
         store = self.pico_store[pico_cat]
@@ -233,12 +244,11 @@ class SimplePICOIndex(PICOIndex):
         negatives.write_parquet(self.index_path(pico_cat))
 
     def try_load(self):
-        self.negatives = {}
         for pico_cat in QUERY_CLASSES:
             index_path = self.index_path(pico_cat)
             if not index_path.exists():
                 return False
-            self.negatives[pico_cat] = pl.read_parquet(index_path)
+            self.negatives[pico_cat] = pl.read_parquet(index_path).sort(pico_cat)
         return True
 
     def cache_all(self):
@@ -254,5 +264,13 @@ class SimplePICOIndex(PICOIndex):
         self.cached_candidates.write_parquet(self.index_path)
 
     def get_similar_doc(self, anchor_pmid):
-        breakpoint()
-        pass
+        candidates = Counter()
+        anchor_row = self.extractions.row(
+            self.extractions["pmid"].search_sorted(anchor_pmid), named=True
+        )
+        for pico_cat in QUERY_CLASSES:
+            negatives = self.negatives[pico_cat]
+            for el in anchor_row[pico_cat]:
+                candidates.update(negatives[negatives[pico_cat].search_sorted(el), 1])
+
+        return sorted(candidates, key=candidates.get, reverse=True)[: self.n_candidates]  # ty: ignore[no-matching-overload]
